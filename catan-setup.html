@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catan Board Setup Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand:#F2E8D5;--sand-dark:#E0CFA8;--ocean:#1B4F72;--ocean-mid:#2E86C1;
+    --ocean-light:#AED6F1;--ink:#1A1008;--gold:#C9973A;--gold-light:#F0C060;
+    --parchment:#FAF3E0;--timber:#5D4037;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--ocean);
+    background-image:radial-gradient(ellipse at 20% 50%,rgba(46,134,193,.3) 0%,transparent 60%),
+      radial-gradient(ellipse at 80% 20%,rgba(27,79,114,.5) 0%,transparent 50%);
+    min-height:100vh;font-family:'Crimson Pro',Georgia,serif;color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;
+  }
+  header{text-align:center;padding:22px 20px 12px;}
+  header h1{font-family:'Cinzel',serif;font-size:clamp(1.4rem,4vw,2.4rem);font-weight:900;
+    color:var(--gold-light);text-shadow:0 2px 8px rgba(0,0,0,.5),0 0 30px rgba(201,151,58,.3);letter-spacing:.08em;}
+  header p{color:var(--ocean-light);font-size:.95rem;margin-top:3px;font-style:italic;}
+  .main-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;padding:0 16px 40px;width:100%;max-width:1160px;}
+  .top-controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;}
+  .btn{font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;letter-spacing:.05em;padding:8px 16px;
+    border:2px solid var(--gold);border-radius:6px;cursor:pointer;transition:all .18s;text-transform:uppercase;}
+  .btn-primary{background:var(--gold);color:var(--ink);}
+  .btn-primary:hover{background:var(--gold-light);border-color:var(--gold-light);transform:translateY(-1px);}
+  .btn-outline{background:transparent;color:var(--gold-light);}
+  .btn-outline:hover{background:rgba(201,151,58,.15);transform:translateY(-1px);}
+  .btn-danger{background:transparent;color:#E07070;border-color:#C05050;}
+  .btn-danger:hover{background:rgba(192,80,80,.15);}
+  .btn-active{background:rgba(46,134,193,.25);color:#AED6F1;border-color:#2E86C1;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .sep{width:1px;height:28px;background:rgba(201,151,58,.3);margin:0 2px;}
+  .layout{display:flex;gap:20px;align-items:flex-start;justify-content:center;flex-wrap:wrap;width:100%;}
+  #board-container{position:relative;flex-shrink:0;}
+  canvas{display:block;border-radius:50%;box-shadow:0 0 0 8px var(--ocean-mid),0 0 0 16px var(--ocean),0 8px 40px rgba(0,0,0,.6);cursor:default;}
+  canvas.edit-cursor{cursor:crosshair;}
+  .side-panel{background:rgba(250,243,224,.96);border-radius:12px;border:2px solid var(--gold);
+    box-shadow:0 8px 32px rgba(0,0,0,.4);padding:18px;min-width:270px;max-width:310px;flex:1;}
+  .panel-title{font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--timber);
+    border-bottom:1px solid var(--sand-dark);padding-bottom:7px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;}
+  .placement-phase{display:none;}
+  .placement-phase.active{display:block;}
+  .player-indicator{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .player-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(0,0,0,.2);flex-shrink:0;}
+  .player-name{font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:var(--timber);}
+  .spot-info{background:var(--sand);border-radius:8px;padding:10px;margin-bottom:10px;border-left:4px solid var(--gold);}
+  .spot-score{font-size:1.8rem;font-weight:600;color:var(--timber);line-height:1;}
+  .spot-score span{font-size:.85rem;font-weight:300;color:#888;}
+  .spot-resources{margin-top:5px;font-size:.88rem;}
+  .res-tag{display:inline-block;padding:2px 6px;border-radius:10px;font-size:.75rem;font-weight:600;margin:2px 2px 0 0;}
+  .btn-group{display:flex;gap:7px;flex-wrap:wrap;}
+  .score-track{height:5px;background:var(--sand-dark);border-radius:3px;overflow:hidden;margin:3px 0 8px;}
+  .score-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));border-radius:3px;transition:width .3s;}
+  .settlements-list{margin-top:3px;}
+  .settlement-item{display:flex;align-items:center;gap:7px;padding:3px 0;border-bottom:1px solid var(--sand-dark);font-size:.85rem;}
+  .settlement-item:last-child{border-bottom:none;}
+  .sett-num{font-family:'Cinzel',serif;font-weight:700;color:var(--timber);min-width:18px;}
+  .player-setup{margin-bottom:14px;}
+  .player-count-btns{display:flex;gap:7px;margin-top:7px;}
+  .cnt-btn{font-family:'Cinzel',serif;font-size:.85rem;font-weight:700;width:34px;height:34px;border-radius:50%;
+    border:2px solid var(--gold);background:transparent;color:var(--gold-light);cursor:pointer;transition:all .15s;}
+  .cnt-btn.active,.cnt-btn:hover{background:var(--gold);color:var(--ink);}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:.8rem;color:var(--ink);}
+  .legend-item{display:flex;align-items:center;gap:5px;}
+  .legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+  .stat-row{display:flex;justify-content:space-between;font-size:.82rem;padding:3px 0;border-bottom:1px solid var(--sand-dark);}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-label{color:#888;}.stat-val{font-weight:600;color:var(--timber);}
+  .phase-msg{font-style:italic;font-size:.88rem;color:#888;margin-top:6px;}
+  .notice{background:rgba(240,192,96,.15);border:1px solid var(--gold);color:#8B6914;
+    border-radius:8px;padding:9px 12px;font-size:.85rem;margin-bottom:10px;display:none;}
+  .notice.show{display:block;}
+  /* Edit panel */
+  #edit-panel{background:rgba(174,214,241,.12);border:1.5px solid rgba(46,134,193,.4);border-radius:8px;padding:12px;margin-bottom:10px;}
+  .edit-tabs{display:flex;gap:0;margin-bottom:10px;border-radius:7px;overflow:hidden;border:1.5px solid var(--gold);}
+  .edit-tab{flex:1;padding:7px 4px;text-align:center;font-family:'Cinzel',serif;font-size:.72rem;font-weight:700;
+    background:transparent;color:var(--gold-light);border:none;cursor:pointer;transition:background .15s;text-transform:uppercase;letter-spacing:.04em;}
+  .edit-tab.active{background:var(--gold);color:var(--ink);}
+  .edit-tab:not(.active):hover{background:rgba(201,151,58,.2);}
+  .edit-sub{font-size:.76rem;color:#666;margin-bottom:7px;line-height:1.4;}
+  .palette{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:7px;}
+  .palette-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;opacity:.65;transition:opacity .15s;font-size:.68rem;color:var(--timber);}
+  .palette-item:hover,.palette-item.sel{opacity:1;}
+  .palette-item.sel .pal-hex{outline:3px solid var(--gold-light);outline-offset:1px;}
+  .pal-hex{width:30px;height:26px;border-radius:4px;border:1.5px solid rgba(0,0,0,.25);}
+  .num-palette{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px;}
+  .num-chip{font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;width:28px;height:28px;
+    border-radius:50%;border:2px solid #8B7355;background:#FAF3E0;color:#1A1008;display:flex;
+    align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
+  .num-chip.hot{border-color:#C0392B;color:#C0392B;}
+  .num-chip.sel{background:var(--gold);border-color:var(--gold-light);color:var(--ink);}
+  .num-chip:hover{transform:scale(1.12);}
+  .port-palette{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px;}
+  .port-chip{font-family:'Cinzel',serif;font-size:.68rem;font-weight:700;padding:4px 7px;border-radius:10px;
+    border:1.5px solid;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+  .port-chip.sel{outline:2px solid var(--gold-light);outline-offset:1px;}
+  .port-chip:hover{transform:scale(1.05);}
+  .edit-hint{font-size:.74rem;color:#7a6040;font-style:italic;margin-top:5px;padding:5px 8px;
+    background:rgba(201,151,58,.1);border-radius:5px;min-height:28px;}
+  #tooltip{position:fixed;background:rgba(26,16,8,.92);color:var(--sand);font-family:'Crimson Pro',serif;
+    font-size:.85rem;padding:7px 11px;border-radius:8px;pointer-events:none;display:none;z-index:999;
+    border:1px solid var(--gold);max-width:210px;line-height:1.4;}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚓ Catan Board Setup</h1>
+  <p>Randomize · Edit · Score · Conquer</p>
+</header>
+<div class="main-wrap">
+  <div class="top-controls">
+    <button class="btn btn-primary" id="btn-randomize">🎲 Randomize</button>
+    <button class="btn btn-outline" id="btn-base">📜 Base Setup</button>
+    <div class="sep"></div>
+    <button class="btn btn-outline" id="btn-edit-tiles" disabled>🗺 Edit Tiles</button>
+    <button class="btn btn-outline" id="btn-edit-nums" disabled>🔢 Edit Numbers</button>
+    <button class="btn btn-outline" id="btn-edit-ports" disabled>⚓ Edit Ports</button>
+    <div class="sep"></div>
+    <button class="btn btn-outline" id="btn-toggle-scores">👁 Scores</button>
+    <button class="btn btn-outline" id="btn-toggle-ports">🗺 Show Ports</button>
+    <div class="sep"></div>
+    <button class="btn btn-primary" id="btn-start-placement" disabled>🏘 Start Placement</button>
+  </div>
+
+  <div class="layout">
+    <div id="board-container">
+      <canvas id="catan-canvas" width="560" height="560"></canvas>
+    </div>
+
+    <div class="side-panel">
+      <div id="panel-setup">
+        <div class="panel-title">Game Setup</div>
+        <div class="player-setup">
+          <div style="font-size:.85rem;color:#666;margin-bottom:5px;">Number of Players</div>
+          <div class="player-count-btns">
+            <button class="cnt-btn active" data-n="2">2</button>
+            <button class="cnt-btn" data-n="3">3</button>
+            <button class="cnt-btn" data-n="4">4</button>
+            <button class="cnt-btn" data-n="5">5</button>
+            <button class="cnt-btn" data-n="6">6</button>
+          </div>
+        </div>
+
+        <!-- Edit panel (hidden until edit mode active) -->
+        <div id="edit-panel" style="display:none">
+          <div class="edit-tabs">
+            <button class="edit-tab active" data-tab="tiles">Tiles</button>
+            <button class="edit-tab" data-tab="numbers">Numbers</button>
+            <button class="edit-tab" data-tab="ports">Ports</button>
+          </div>
+
+          <div id="ep-tiles">
+            <div class="edit-sub">Select a terrain to paint tiles, <em>or</em> click two tiles to swap them.</div>
+            <div class="palette" id="terrain-palette"></div>
+            <button class="btn btn-outline" id="btn-clear-terrain-sel" style="font-size:.68rem;padding:4px 10px;display:none">✕ Clear selection (swap mode)</button>
+            <div class="edit-hint" id="tile-hint">Click a tile to select it for swapping, or pick a terrain above to paint.</div>
+          </div>
+
+          <div id="ep-numbers" style="display:none">
+            <div class="edit-sub">Select a number to assign it to a tile, <em>or</em> click two tiles to swap their numbers.</div>
+            <div class="num-palette" id="num-palette"></div>
+            <button class="btn btn-outline" id="btn-clear-num-sel" style="font-size:.68rem;padding:4px 10px;display:none">✕ Clear selection (swap mode)</button>
+            <div class="edit-hint" id="num-hint">Click two tiles to swap numbers, or pick a number above to assign.</div>
+          </div>
+
+          <div id="ep-ports" style="display:none">
+            <div class="edit-sub">Select a port type to assign it, <em>or</em> click any two edge spots (including empty ones) to swap. Moving a port to an empty spot clears the old location.</div>
+            <div class="port-palette" id="port-palette"></div>
+            <button class="btn btn-outline" id="btn-clear-port-sel" style="font-size:.68rem;padding:4px 10px;display:none">✕ Clear selection (swap mode)</button>
+            <div class="edit-hint" id="port-hint">Click any port or empty edge to swap. Or pick a type above to assign.</div>
+          </div>
+        </div>
+
+        <div class="panel-title" style="margin-top:14px">Terrain Legend</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#2D8E4A"></div>Forest (Timber)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#E8A020"></div>Fields (Wheat)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#7F8C8D"></div>Mountains (Ore)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#C0392B"></div>Hills (Brick)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#82C341"></div>Pasture (Sheep)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#D4AC6E"></div>Desert</div>
+        </div>
+
+        <div class="panel-title" style="margin-top:14px">Board Stats</div>
+        <div id="board-stats"><div class="phase-msg">Randomize or load base setup to begin.</div></div>
+      </div>
+
+      <!-- Placement phase -->
+      <div id="panel-placement" class="placement-phase">
+        <div class="panel-title">Settlement Placement</div>
+        <div class="notice" id="placement-notice"></div>
+        <div class="player-indicator">
+          <div class="player-dot" id="current-player-dot"></div>
+          <div class="player-name" id="current-player-name">Player 1</div>
+          <div style="margin-left:auto;font-size:.75rem;color:#888;" id="placement-round"></div>
+        </div>
+        <div class="spot-info" id="best-spot-info" style="display:none">
+          <div style="font-size:.75rem;color:#888;margin-bottom:3px;">Best available spot</div>
+          <div class="spot-score" id="best-score">— <span>pip score</span></div>
+          <div class="score-track"><div class="score-fill" id="best-score-bar" style="width:0%"></div></div>
+          <div class="spot-resources" id="best-resources"></div>
+        </div>
+        <div class="btn-group" style="margin-bottom:10px">
+          <button class="btn btn-primary" id="btn-accept" disabled>✓ Accept Best</button>
+          <button class="btn btn-outline" id="btn-override">⬡ Pick Own</button>
+          <button class="btn btn-danger" id="btn-cancel-override" style="display:none">✕ Cancel</button>
+        </div>
+        <div class="panel-title">Settlements Placed</div>
+        <div class="settlements-list" id="settlements-list"></div>
+        <div style="margin-top:14px">
+          <button class="btn btn-danger" id="btn-reset-placement">↺ Reset Placement</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════
+const TERRAIN_TYPES = [
+  {name:'forest',  resource:'Timber',color:'#2D8E4A',stroke:'#1C6B34',count:4},
+  {name:'fields',  resource:'Wheat', color:'#E8A020',stroke:'#B87810',count:4},
+  {name:'mountain',resource:'Ore',   color:'#7F8C8D',stroke:'#5D6D7E',count:3},
+  {name:'hills',   resource:'Brick', color:'#C0392B',stroke:'#922B21',count:3},
+  {name:'pasture', resource:'Sheep', color:'#82C341',stroke:'#5D9B2A',count:4},
+  {name:'desert',  resource:'None',  color:'#D4AC6E',stroke:'#B8934A',count:1},
+];
+const TT = Object.fromEntries(TERRAIN_TYPES.map(t=>[t.name,t]));
+
+// Official Catan base board terrain (row by row, L→R, rows [3,4,5,4,3])
+const BASE_TERRAINS = [
+  'mountain','pasture','forest',
+  'fields','hills','pasture','hills',
+  'fields','forest','desert','forest','mountain',
+  'forest','mountain','fields','pasture',
+  'hills','fields','pasture'
+];
+// Official base numbers (placed in spiral skipping desert at position 9)
+const BASE_NUMBERS = [5,2,6,3,8,10,9,12,11,4,8,10,9,4,5,6,3,11];
+
+// Official base ports (clockwise from top-left)
+const BASE_PORT_DEFS = [
+  {ratio:'2:1',resource:'Ore',   color:'#7F8C8D'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'2:1',resource:'Wheat', color:'#E8A020'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'2:1',resource:'Timber',color:'#2D8E4A'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'2:1',resource:'Brick', color:'#C0392B'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'2:1',resource:'Sheep', color:'#82C341'},
+];
+const ALL_PORTS = [
+  {ratio:'2:1',resource:'Timber',color:'#2D8E4A'},
+  {ratio:'2:1',resource:'Wheat', color:'#E8A020'},
+  {ratio:'2:1',resource:'Ore',   color:'#7F8C8D'},
+  {ratio:'2:1',resource:'Brick', color:'#C0392B'},
+  {ratio:'2:1',resource:'Sheep', color:'#82C341'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+  {ratio:'3:1',resource:'Any',   color:'#2E86C1'},
+];
+
+const NUMBER_TOKENS = [2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12];
+const PIPS = {2:1,3:2,4:3,5:4,6:5,8:5,9:4,10:3,11:2,12:1};
+const PLAYER_COLORS = ['#E74C3C','#3498DB','#FFFFFF','#F39C12','#9B59B6','#1ABC9C'];
+const PLAYER_STROKE = ['#922B21','#1A6BA0','#AAAAAA','#D68910','#76448A','#148F77'];
+const HEX_ROW_SIZES = [3,4,5,4,3];
+const HEX_SIZE = 52;
+const HEX_H = Math.sqrt(3)*HEX_SIZE;
+
+const canvas = document.getElementById('catan-canvas');
+const ctx = canvas.getContext('2d');
+const W=canvas.width, H=canvas.height, CX=W/2, CY=H/2;
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let tiles=[], vertices=[], ports=[], allEdges=[];
+let showScores=true, showPorts=true;
+let playerCount=2;
+let placementActive=false;
+let placementOrder=[], placementStep=0;
+let settlements=[], highlightedVertex=null, pickingMode=false;
+// Edit state
+let editMode=null; // 'tiles'|'numbers'|'ports'|null
+let selTerrain=null, selNumber=null, selPortDef=null;
+let firstTile=null, firstPort=null;
+
+// ═══════════════════════════════════════════════════
+// HEX GEOMETRY
+// ═══════════════════════════════════════════════════
+function hexCenter(row,col){
+  const x=CX+(col-(HEX_ROW_SIZES[row]-1)/2)*HEX_SIZE*1.73;
+  const y=CY+(row-2)*HEX_H*.865;
+  return {x,y};
+}
+function hexVerts(cx,cy,size){
+  const pts=[];
+  for(let i=0;i<6;i++){
+    const a=Math.PI/180*(60*i-30);
+    pts.push({x:cx+size*Math.cos(a),y:cy+size*Math.sin(a)});
+  }
+  return pts;
+}
+function drawHex(cx,cy,size,fill,stroke,lw=2){
+  const p=hexVerts(cx,cy,size);
+  ctx.beginPath();ctx.moveTo(p[0].x,p[0].y);
+  for(let i=1;i<6;i++)ctx.lineTo(p[i].x,p[i].y);
+  ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+  ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
+}
+function ptKey(x,y){return `${Math.round(x)},${Math.round(y)}`;}
+function ptInHex(px,py,tile){return Math.hypot(px-tile.cx,py-tile.cy)<HEX_SIZE*.88;}
+function canvasPt(e){
+  const r=canvas.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*(W/r.width), y:(e.clientY-r.top)*(H/r.height)};
+}
+
+// ═══════════════════════════════════════════════════
+// BOARD BUILD
+// ═══════════════════════════════════════════════════
+function buildTiles(terrainArr){
+  tiles=[];
+  let ti=0;
+  for(let row=0;row<HEX_ROW_SIZES.length;row++)
+    for(let col=0;col<HEX_ROW_SIZES[row];col++){
+      const {x,y}=hexCenter(row,col);
+      tiles.push({terrain:terrainArr[ti],number:null,cx:x,cy:y,row,col,idx:ti,verts:hexVerts(x,y,HEX_SIZE)});
+      ti++;
+    }
+}
+function assignNumbers(numArr){
+  let ni=0;
+  for(const tile of tiles) tile.number=tile.terrain.name==='desert'?null:numArr[ni++];
+}
+function generateBoard(){
+  let pool=[];
+  for(const t of TERRAIN_TYPES) for(let i=0;i<t.count;i++) pool.push(t);
+  shuffle(pool);
+  buildTiles(pool);
+  let nums=[...NUMBER_TOKENS]; shuffle(nums);
+  assignNumbers(nums);
+  finishBuild(true);
+}
+function loadBaseSetup(){
+  buildTiles(BASE_TERRAINS.map(n=>TT[n]));
+  let ni=0;
+  for(let i=0;i<tiles.length;i++)
+    tiles[i].number=i===9?null:BASE_NUMBERS[ni++];
+  finishBuild(false);
+}
+function finishBuild(random){
+  resetPlacementState();
+  buildVertices();
+  random?buildRandomPorts():buildBasePorts();
+  scoreVertices();
+  updateBoardStats();
+  exitEditMode();
+  draw();
+  ['btn-start-placement','btn-edit-tiles','btn-edit-nums','btn-edit-ports'].forEach(id=>document.getElementById(id).disabled=false);
+}
+
+// ═══════════════════════════════════════════════════
+// VERTEX GRAPH
+// ═══════════════════════════════════════════════════
+function buildVertices(){
+  const map=new Map();
+  for(const tile of tiles)
+    for(let vi=0;vi<6;vi++){
+      const p=tile.verts[vi], key=ptKey(p.x,p.y);
+      if(!map.has(key)) map.set(key,{x:p.x,y:p.y,tiles:[],score:0,placed:false,player:null,portBonus:null,adj:[]});
+      map.get(key).tiles.push(tile);
+    }
+  vertices=Array.from(map.values());
+  const kv=new Map(); for(const v of vertices) kv.set(ptKey(v.x,v.y),v);
+  for(const v of vertices)
+    for(const tile of v.tiles)
+      for(let vi=0;vi<6;vi++){
+        const a=ptKey(tile.verts[vi].x,tile.verts[vi].y);
+        const b=ptKey(tile.verts[(vi+1)%6].x,tile.verts[(vi+1)%6].y);
+        const vk=ptKey(v.x,v.y);
+        const nb=a===vk?kv.get(b):b===vk?kv.get(a):null;
+        if(nb&&!v.adj.includes(nb)) v.adj.push(nb);
+      }
+}
+
+// ═══════════════════════════════════════════════════
+// PORTS  — allEdges holds every outer edge; def=null means empty slot
+// ═══════════════════════════════════════════════════
+
+function getOuterEdges(){
+  const outerKeys=new Set(vertices.filter(v=>v.tiles.length<=2).map(v=>ptKey(v.x,v.y)));
+  const edges=[],seen=new Set();
+  for(const tile of tiles)
+    for(let vi=0;vi<6;vi++){
+      const a=tile.verts[vi],b=tile.verts[(vi+1)%6];
+      const ka=ptKey(a.x,a.y),kb=ptKey(b.x,b.y);
+      if(!outerKeys.has(ka)||!outerKeys.has(kb)) continue;
+      const key=[ka,kb].sort().join('|');
+      if(seen.has(key)) continue; seen.add(key);
+      const va=vertices.find(v=>ptKey(v.x,v.y)===ka);
+      const vb=vertices.find(v=>ptKey(v.x,v.y)===kb);
+      edges.push({v1:va,v2:vb,mx:(va.x+vb.x)/2,my:(va.y+vb.y)/2,def:null});
+    }
+  return edges;
+}
+function buildRandomPorts(){
+  allEdges=getOuterEdges(); shuffle(allEdges);
+  const pool=[...ALL_PORTS]; shuffle(pool);
+  // assign first 9 edges as ports
+  for(let i=0;i<allEdges.length;i++) allEdges[i].def=i<9?{...pool[i]}:null;
+  ports=allEdges.filter(e=>e.def);
+  assignPortsToVerts();
+}
+function buildBasePorts(){
+  allEdges=getOuterEdges();
+  allEdges.sort((a,b)=>Math.atan2(a.my-CY,a.mx-CX)-Math.atan2(b.my-CY,b.mx-CX));
+  // clear all, then assign base ports at evenly-spaced indices
+  for(const e of allEdges) e.def=null;
+  const step=Math.floor(allEdges.length/9);
+  BASE_PORT_DEFS.forEach((def,i)=>{ allEdges[i*step].def={...def}; });
+  ports=allEdges.filter(e=>e.def);
+  assignPortsToVerts();
+}
+function assignPortsToVerts(){
+  for(const v of vertices) v.portBonus=null;
+  ports=allEdges.filter(e=>e.def);
+  for(const p of ports){p.v1.portBonus=p.def;p.v2.portBonus=p.def;}
+}
+
+// ═══════════════════════════════════════════════════
+// SCORING
+// ═══════════════════════════════════════════════════
+function scoreVertices(){
+  for(const v of vertices){
+    v.score=0;
+    for(const t of v.tiles) if(t.number) v.score+=PIPS[t.number]||0;
+  }
+}
+function getResources(v){
+  return v.tiles.filter(t=>t.terrain.resource&&t.terrain.resource!=='None')
+    .map(t=>({name:t.terrain.resource,color:t.terrain.color,number:t.number}));
+}
+
+// ═══════════════════════════════════════════════════
+// PLACEMENT
+// ═══════════════════════════════════════════════════
+function availVerts(){return vertices.filter(v=>!v.placed&&!v.adj.some(a=>a.placed));}
+function bestVert(){const a=availVerts();return a.length?a.reduce((b,v)=>v.score>b.score?v:b,a[0]):null;}
+function buildPlacementOrder(){
+  const f=Array.from({length:playerCount},(_,i)=>i);
+  placementOrder=[...f,...[...f].reverse()].map((p,i)=>({player:p,round:i<playerCount?1:2}));
+  placementStep=0;settlements=[];
+}
+function startPlacement(){
+  exitEditMode();
+  buildPlacementOrder();
+  placementActive=true;
+  document.getElementById('panel-setup').style.display='none';
+  document.getElementById('panel-placement').classList.add('active');
+  updatePlacementUI();draw();
+}
+function updatePlacementUI(){
+  if(placementStep>=placementOrder.length){finishPlacement();return;}
+  const {player,round}=placementOrder[placementStep];
+  document.getElementById('current-player-dot').style.cssText=`background:${PLAYER_COLORS[player]};border-color:${PLAYER_STROKE[player]}`;
+  document.getElementById('current-player-name').textContent=`Player ${player+1}`;
+  document.getElementById('placement-round').textContent=`Round ${round} of 2`;
+  highlightedVertex=bestVert();
+  const info=document.getElementById('best-spot-info');
+  if(highlightedVertex){
+    info.style.display='';
+    document.getElementById('best-score').innerHTML=`${highlightedVertex.score} <span>pip score</span>`;
+    document.getElementById('best-score-bar').style.width=Math.min(100,highlightedVertex.score/15*100)+'%';
+    document.getElementById('best-resources').innerHTML=getResources(highlightedVertex).map(r=>
+      `<span class="res-tag" style="background:${r.color}22;color:${r.color};border:1px solid ${r.color}66">${r.name}${r.number?' ('+r.number+')':''}</span>`
+    ).join('');
+    document.getElementById('btn-accept').disabled=false;
+  } else {
+    info.style.display='none';document.getElementById('btn-accept').disabled=true;
+  }
+  renderSettlementsList();draw();
+}
+function renderSettlementsList(){
+  const list=document.getElementById('settlements-list');
+  list.innerHTML='';
+  if(!settlements.length){list.innerHTML='<div style="color:#aaa;font-size:.82rem;font-style:italic">No settlements yet</div>';return;}
+  for(const s of settlements){
+    const res=getResources(s.vertex);
+    const d=document.createElement('div');d.className='settlement-item';
+    d.innerHTML=`<div style="width:9px;height:9px;border-radius:50%;background:${PLAYER_COLORS[s.player]};flex-shrink:0"></div>
+      <div class="sett-num">P${s.player+1}</div>
+      <div style="flex:1;font-size:.79rem;color:#555">${res.map(r=>r.name).join(', ')||'Desert'}</div>
+      <div style="font-size:.79rem;font-weight:600;color:var(--timber)">${s.score}⚈</div>`;
+    list.appendChild(d);
+  }
+}
+function placeSettlement(v,player){
+  v.placed=true;v.player=player;
+  settlements.push({vertex:v,player,score:v.score});
+  placementStep++;pickingMode=false;
+  document.getElementById('btn-cancel-override').style.display='none';
+  document.getElementById('btn-override').style.display='';
+  updatePlacementUI();
+}
+function finishPlacement(){
+  document.getElementById('current-player-name').textContent='🎉 All Placed!';
+  document.getElementById('current-player-dot').style.background='#aaa';
+  document.getElementById('placement-round').textContent='';
+  document.getElementById('best-spot-info').style.display='none';
+  document.getElementById('btn-accept').disabled=true;
+  document.getElementById('btn-override').style.display='none';
+  document.getElementById('btn-cancel-override').style.display='none';
+  const n=document.getElementById('placement-notice');
+  n.textContent='All settlements placed! Good luck, settlers!';n.classList.add('show');
+  renderSettlementsList();draw();
+}
+function resetPlacementState(){
+  for(const v of vertices){v.placed=false;v.player=null;}
+  settlements=[];placementActive=false;pickingMode=false;placementStep=0;highlightedVertex=null;
+  document.getElementById('panel-setup').style.display='';
+  document.getElementById('panel-placement').classList.remove('active');
+  document.getElementById('placement-notice').classList.remove('show');
+  document.getElementById('btn-cancel-override').style.display='none';
+  document.getElementById('btn-override').style.display='';
+}
+
+// ═══════════════════════════════════════════════════
+// EDIT MODE
+// ═══════════════════════════════════════════════════
+function enterEditMode(mode){
+  editMode=mode;
+  firstTile=null;firstPort=null;
+  selTerrain=null;selNumber=null;selPortDef=null;
+  document.getElementById('edit-panel').style.display='';
+  document.querySelectorAll('.edit-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===mode));
+  document.getElementById('ep-tiles').style.display=mode==='tiles'?'':'none';
+  document.getElementById('ep-numbers').style.display=mode==='numbers'?'':'none';
+  document.getElementById('ep-ports').style.display=mode==='ports'?'':'none';
+  clearPaletteSelections();
+  updateEditBtnStyles();
+  canvas.classList.add('edit-cursor');
+  // Reset hints
+  document.getElementById('tile-hint').textContent='Click a tile to select for swapping, or pick a terrain above to paint.';
+  document.getElementById('num-hint').textContent='Click two tiles to swap numbers, or pick a number above to assign.';
+  document.getElementById('port-hint').textContent='Click any port or empty edge slot to select, then click another to swap. Or pick a port type above to assign.';
+  draw();
+}
+function exitEditMode(){
+  editMode=null;firstTile=null;firstPort=null;
+  selTerrain=null;selNumber=null;selPortDef=null;
+  document.getElementById('edit-panel').style.display='none';
+  clearPaletteSelections();
+  updateEditBtnStyles();
+  canvas.classList.remove('edit-cursor');
+  draw();
+}
+function updateEditBtnStyles(){
+  document.getElementById('btn-edit-tiles').className='btn '+(editMode==='tiles'?'btn-active':'btn-outline');
+  document.getElementById('btn-edit-nums').className='btn '+(editMode==='numbers'?'btn-active':'btn-outline');
+  document.getElementById('btn-edit-ports').className='btn '+(editMode==='ports'?'btn-active':'btn-outline');
+}
+function clearPaletteSelections(){
+  document.querySelectorAll('.palette-item,.num-chip,.port-chip').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('btn-clear-terrain-sel').style.display='none';
+  document.getElementById('btn-clear-num-sel').style.display='none';
+  document.getElementById('btn-clear-port-sel').style.display='none';
+}
+
+// Build palettes
+function buildTerrainPalette(){
+  const pal=document.getElementById('terrain-palette');pal.innerHTML='';
+  for(const t of TERRAIN_TYPES){
+    const item=document.createElement('div');item.className='palette-item';item.dataset.name=t.name;
+    item.innerHTML=`<div class="pal-hex" style="background:${t.color};border-color:${t.stroke}"></div><span>${t.resource}</span>`;
+    item.addEventListener('click',()=>{
+      clearPaletteSelections();item.classList.add('sel');selTerrain=t;firstTile=null;
+      document.getElementById('btn-clear-terrain-sel').style.display='';
+      setHint('tile','Now click any tile on the board to set its terrain to '+t.resource+'.');
+    });
+    pal.appendChild(item);
+  }
+}
+function buildNumPalette(){
+  const pal=document.getElementById('num-palette');pal.innerHTML='';
+  for(const n of [2,3,4,5,6,8,9,10,11,12]){
+    const hot=n===6||n===8;
+    const chip=document.createElement('div');chip.className='num-chip'+(hot?' hot':'');chip.textContent=n;
+    chip.addEventListener('click',()=>{
+      clearPaletteSelections();chip.classList.add('sel');selNumber=n;firstTile=null;
+      document.getElementById('btn-clear-num-sel').style.display='';
+      setHint('num','Now click any non-desert tile to assign the number '+n+'.');
+    });
+    pal.appendChild(chip);
+  }
+  // "clear" chip
+  const none=document.createElement('div');none.className='num-chip';none.textContent='—';none.title='Remove number';
+  none.addEventListener('click',()=>{
+    clearPaletteSelections();none.classList.add('sel');selNumber=-1;firstTile=null;
+    document.getElementById('btn-clear-num-sel').style.display='';
+    setHint('num','Click a tile to remove its number token.');
+  });
+  pal.appendChild(none);
+}
+function buildPortPalette(){
+  const pal=document.getElementById('port-palette');pal.innerHTML='';
+  const unique=[],seen=new Set();
+  for(const p of ALL_PORTS){const k=p.ratio+p.resource;if(!seen.has(k)){seen.add(k);unique.push(p);}}
+  for(const p of unique){
+    const chip=document.createElement('div');chip.className='port-chip';
+    const is2to1=(p.ratio==='2:1');
+    if(is2to1){
+      chip.style.cssText=`background:${p.color};color:#000;border-color:rgba(0,0,0,0.3);font-weight:700;`;
+    } else {
+      chip.style.cssText=`background:rgba(10,30,55,0.85);color:#AED6F1;border-color:rgba(46,134,193,0.55);`;
+    }
+    chip.textContent=`${p.ratio} ${p.resource}`;
+    chip.addEventListener('click',()=>{
+      clearPaletteSelections();chip.classList.add('sel');selPortDef=p;firstPort=null;
+      document.getElementById('btn-clear-port-sel').style.display='';
+      setHint('port','Now click any edge on the board to assign "'+p.ratio+' '+p.resource+'" to it.');
+    });
+    pal.appendChild(chip);
+  }
+  // Add "Remove port" chip
+  const removeChip=document.createElement('div');removeChip.className='port-chip';
+  removeChip.style.cssText='background:rgba(80,20,20,0.7);color:#E07070;border-color:#C05050;';
+  removeChip.textContent='✕ Remove';
+  removeChip.title='Remove port from a slot';
+  removeChip.addEventListener('click',()=>{
+    clearPaletteSelections();removeChip.classList.add('sel');
+    selPortDef={_remove:true};firstPort=null;
+    document.getElementById('btn-clear-port-sel').style.display='';
+    setHint('port','Click any port on the board to remove it (turn it into an empty slot).');
+  });
+  pal.appendChild(removeChip);
+}
+function setHint(type,msg){
+  const ids={tile:'tile-hint',num:'num-hint',port:'port-hint'};
+  document.getElementById(ids[type]).textContent=msg;
+}
+
+// Clear-sel buttons
+document.getElementById('btn-clear-terrain-sel').addEventListener('click',()=>{
+  selTerrain=null;clearPaletteSelections();setHint('tile','Click two tiles on the board to swap their terrain.');
+});
+document.getElementById('btn-clear-num-sel').addEventListener('click',()=>{
+  selNumber=null;clearPaletteSelections();setHint('num','Click two tiles to swap their numbers.');
+});
+document.getElementById('btn-clear-port-sel').addEventListener('click',()=>{
+  selPortDef=null;clearPaletteSelections();setHint('port','Click any port or empty edge slot to swap. Moving a port to an empty spot clears the old location.');
+});
+
+// Edit tabs
+document.querySelectorAll('.edit-tab').forEach(tab=>tab.addEventListener('click',()=>enterEditMode(tab.dataset.tab)));
+
+// ═══════════════════════════════════════════════════
+// CANVAS CLICK
+// ═══════════════════════════════════════════════════
+canvas.addEventListener('click',e=>{
+  const {x,y}=canvasPt(e);
+
+  // Placement pick mode
+  if(pickingMode){
+    for(const v of availVerts()){
+      if(Math.hypot(x-v.x,y-v.y)<20){placeSettlement(v,placementOrder[placementStep].player);return;}
+    }
+    return;
+  }
+
+  // Edit: tiles
+  if(editMode==='tiles'){
+    const hit=tiles.find(t=>ptInHex(x,y,t));if(!hit)return;
+    if(selTerrain){
+      // Paint mode
+      hit.terrain=selTerrain;
+      if(selTerrain.name==='desert') hit.number=null;
+      buildVertices();scoreVertices();assignPortsToVerts();updateBoardStats();draw();
+      setHint('tile','Painted! Click another tile, or pick a different terrain.');
+    } else {
+      // Swap mode
+      if(!firstTile){firstTile=hit;setHint('tile','First tile selected ('+hit.terrain.resource+'). Now click another tile to swap.');draw();}
+      else if(firstTile!==hit){
+        [firstTile.terrain,hit.terrain]=[hit.terrain,firstTile.terrain];
+        if(firstTile.terrain.name==='desert') firstTile.number=null;
+        if(hit.terrain.name==='desert') hit.number=null;
+        firstTile=null;
+        buildVertices();scoreVertices();assignPortsToVerts();updateBoardStats();draw();
+        setHint('tile','Swapped! Click two more tiles to swap again.');
+      } else {firstTile=null;draw();setHint('tile','Deselected. Click a tile to start a swap.');}
+    }
+    return;
+  }
+
+  // Edit: numbers
+  if(editMode==='numbers'){
+    const hit=tiles.find(t=>ptInHex(x,y,t));if(!hit||hit.terrain.name==='desert')return;
+    if(selNumber!==null){
+      hit.number=selNumber===-1?null:selNumber;
+      scoreVertices();updateBoardStats();draw();
+      setHint('num',selNumber===-1?'Number removed. Click another tile.':'Set '+selNumber+'! Click another tile.');
+    } else {
+      if(!firstTile){firstTile=hit;setHint('num','First tile ('+hit.number+') selected. Click another tile to swap.');draw();}
+      else if(firstTile!==hit){
+        [firstTile.number,hit.number]=[hit.number,firstTile.number];
+        firstTile=null;scoreVertices();updateBoardStats();draw();
+        setHint('num','Numbers swapped! Click two more tiles to swap again.');
+      } else {firstTile=null;draw();setHint('num','Deselected. Click a tile to start a swap.');}
+    }
+    return;
+  }
+
+  // Edit: ports
+  if(editMode==='ports'){
+    // Search all edges (ports + empty slots) within click radius
+    let near=null,nearDist=40;
+    for(const e of allEdges){
+      const d=Math.hypot(x-e.mx,y-e.my);
+      if(d<nearDist){nearDist=d;near=e;}
+    }
+    if(!near)return;
+
+    if(selPortDef){
+      // Assign palette port to this edge; _remove sentinel clears it
+      near.def=selPortDef._remove?null:{...selPortDef};
+      assignPortsToVerts();draw();
+      setHint('port',selPortDef._remove?'Port removed! Click another to remove.':'Port assigned! Click another edge to place it.');
+    } else {
+      // Swap mode: swap any two edges (port↔port, port↔empty, empty↔port)
+      if(!firstPort){
+        firstPort=near;
+        const label=near.def?(near.def.ratio+' '+near.def.resource):'empty slot';
+        setHint('port','Selected ('+label+'). Now click another edge or empty spot to swap.');
+        draw();
+      } else if(firstPort!==near){
+        // Swap defs (null swapping with a port effectively moves it)
+        [firstPort.def,near.def]=[near.def,firstPort.def];
+        firstPort=null;assignPortsToVerts();draw();
+        setHint('port','Swapped! Click two spots to swap again.');
+      } else {firstPort=null;draw();setHint('port','Deselected. Click any edge or port to start.');}
+    }
+    return;
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════════════════
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#1B5E8A';ctx.fillRect(0,0,W,H);
+  // ocean texture
+  ctx.save();ctx.globalAlpha=.05;
+  for(let i=0;i<28;i++){ctx.beginPath();ctx.arc(50+Math.sin(i*1.7)*220+220,50+Math.cos(i*1.3)*220+220,7+(i%5)*4,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();}
+  ctx.restore();
+
+  for(const t of tiles) drawTile(t);
+  if(showPorts||editMode==='ports') drawPorts();
+  for(const t of tiles) if(t.number) drawNumber(t);
+  if(showScores||placementActive) drawVertices();
+
+  // edit highlights
+  if(editMode==='tiles'&&firstTile) drawHex(firstTile.cx,firstTile.cy,HEX_SIZE-1,'transparent','#F0C060',4);
+  if(editMode==='numbers'&&firstTile) drawHex(firstTile.cx,firstTile.cy,HEX_SIZE-1,'transparent','#AED6F1',4);
+}
+
+function drawTile(tile){
+  const sel=(editMode==='tiles'&&firstTile===tile)||(editMode==='numbers'&&firstTile===tile);
+  drawHex(tile.cx,tile.cy,HEX_SIZE-1,tile.terrain.color,sel?'#F0C060':tile.terrain.stroke,sel?3.5:2);
+  drawDetail(tile);
+}
+function drawDetail(tile){
+  const {cx,cy,terrain:{name}}=tile;
+  ctx.save();ctx.globalAlpha=.22;
+  if(name==='forest'){for(let i=0;i<5;i++){const a=(i/5)*Math.PI*2,r=HEX_SIZE*.33,tx=cx+r*Math.cos(a),ty=cy+r*Math.sin(a);ctx.beginPath();ctx.moveTo(tx,ty-8);ctx.lineTo(tx-5,ty+4);ctx.lineTo(tx+5,ty+4);ctx.closePath();ctx.fillStyle='#145A32';ctx.fill();}}
+  else if(name==='fields'){ctx.strokeStyle='#7D6608';ctx.lineWidth=1;for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(cx+i*9,cy-17);ctx.lineTo(cx+i*9,cy+17);ctx.stroke();}}
+  else if(name==='pasture'){ctx.fillStyle='#fff';for(const[ox,oy]of[[-12,-8],[8,-12],[14,8],[-8,14],[2,2]]){ctx.beginPath();ctx.arc(cx+ox,cy+oy,4.5,0,Math.PI*2);ctx.fill();}}
+  else if(name==='mountain'){ctx.fillStyle='#555';ctx.beginPath();ctx.moveTo(cx-20,cy+11);ctx.lineTo(cx-4,cy-15);ctx.lineTo(cx+12,cy+11);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(cx-8,cy+11);ctx.lineTo(cx+8,cy-8);ctx.lineTo(cx+24,cy+11);ctx.closePath();ctx.fill();}
+  else if(name==='hills'){ctx.strokeStyle='#7B241C';ctx.lineWidth=1.5;for(let r=-1;r<=1;r++){const off=r%2===0?0:10;for(let c=-1;c<=1;c++)ctx.strokeRect(cx-22+c*20+off,cy-10+r*12,15,8);}}
+  else if(name==='desert'){ctx.strokeStyle='#8B7355';ctx.lineWidth=1;for(let i=-2;i<=2;i++){ctx.beginPath();for(let x2=-20;x2<=20;x2+=5){const wy=cy+i*8+Math.sin(x2*.4)*3;x2===-20?ctx.moveTo(cx+x2,wy):ctx.lineTo(cx+x2,wy);}ctx.stroke();}}
+  ctx.restore();
+}
+function drawNumber(tile){
+  const {cx,cy,number}=tile,hot=number===6||number===8,r=17;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='#FAF3E0';ctx.fill();
+  ctx.strokeStyle=hot?'#C0392B':'#8B7355';ctx.lineWidth=hot?2:1.5;ctx.stroke();
+  ctx.fillStyle=hot?'#C0392B':'#1A1008';
+  ctx.font=`bold ${hot?15:14}px 'Cinzel',serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(number,cx,cy-2);
+  const pips=PIPS[number]||0,tw=(pips-1)*5;
+  ctx.fillStyle=hot?'#C0392B':'#333';
+  for(let i=0;i<pips;i++){ctx.beginPath();ctx.arc(cx-tw/2+i*5,cy+8,2,0,Math.PI*2);ctx.fill();}
+}
+function drawPorts(){
+  const inPortEdit=(editMode==='ports');
+  // In edit mode, show all outer edges including empty slots
+  if(inPortEdit){
+    for(const e of allEdges){
+      if(e.def) continue;
+      const isSel=(firstPort===e);
+      ctx.save();
+      ctx.beginPath();ctx.moveTo(e.v1.x,e.v1.y);ctx.lineTo(e.v2.x,e.v2.y);
+      ctx.strokeStyle=isSel?'#F0C060':'rgba(255,255,255,0.25)';
+      ctx.lineWidth=isSel?3:1.5;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+      ctx.beginPath();ctx.arc(e.mx,e.my,6,0,Math.PI*2);
+      ctx.fillStyle=isSel?'rgba(240,192,96,0.55)':'rgba(255,255,255,0.13)';ctx.fill();
+      ctx.strokeStyle=isSel?'#F0C060':'rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // Draw actual ports
+  for(const port of allEdges.filter(e=>e.def)){
+    const{v1,v2,def,mx,my}=port;
+    const isSel=(inPortEdit&&firstPort===port);
+    const is2to1=(def.ratio==='2:1');
+    // Edge line
+    ctx.beginPath();ctx.moveTo(v1.x,v1.y);ctx.lineTo(v2.x,v2.y);
+    ctx.strokeStyle=isSel?'#F0C060':def.color;
+    ctx.lineWidth=isSel?4.5:is2to1?3.5:2.5;
+    ctx.setLineDash([6,3]);ctx.stroke();ctx.setLineDash([]);
+    ctx.save();
+    if(is2to1){
+      // Solid resource color, black text for readability
+      ctx.fillStyle=def.color;
+      ctx.beginPath();ctx.roundRect(mx-20,my-13,40,26,6);ctx.fill();
+      ctx.strokeStyle=isSel?'#F0C060':'rgba(0,0,0,0.4)';ctx.lineWidth=isSel?2.5:1;ctx.stroke();
+      ctx.fillStyle='#000000';
+      ctx.font='bold 10px Cinzel,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('2:1',mx,my-3);
+      ctx.font='bold 8px Cinzel,serif';
+      ctx.fillText(def.resource.slice(0,3).toUpperCase(),mx,my+7);
+    } else {
+      // 3:1 — dark bg, light blue text
+      ctx.fillStyle='rgba(10,30,55,0.82)';
+      ctx.beginPath();ctx.roundRect(mx-20,my-13,40,26,6);ctx.fill();
+      ctx.strokeStyle=isSel?'#F0C060':'rgba(46,134,193,0.55)';ctx.lineWidth=isSel?2.5:1.2;ctx.stroke();
+      ctx.fillStyle='#AED6F1';
+      ctx.font='bold 10px Cinzel,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('3:1',mx,my-3);
+      ctx.font='8px Cinzel,serif';ctx.fillStyle='#ccc';
+      ctx.fillText('ANY',mx,my+7);
+    }
+    ctx.restore();
+  }
+}
+function drawVertices(){
+  const avail=placementActive?availVerts():vertices;
+  const maxS=Math.max(...vertices.map(v=>v.score),1);
+  for(const v of vertices){
+    if(v.placed){drawSettlement(v);continue;}
+    const isA=avail.includes(v),isBest=v===highlightedVertex&&!pickingMode,isPick=pickingMode&&isA;
+    if(!isA&&!showScores) continue;
+    const r=isBest?14:showScores?10:8;
+    ctx.save();ctx.globalAlpha=isA?.9:.28;
+    if(isBest){ctx.beginPath();ctx.arc(v.x,v.y,r+5,0,Math.PI*2);ctx.fillStyle='rgba(240,192,96,.25)';ctx.fill();}
+    const ratio=v.score/maxS;
+    const sc=ratio>.65?'#27AE60':ratio>.35?'#F39C12':'#E74C3C';
+    ctx.beginPath();ctx.arc(v.x,v.y,r,0,Math.PI*2);
+    ctx.fillStyle=isBest?'#F0C060':isPick?'#AED6F1':sc+(showScores?'DD':'88');ctx.fill();
+    ctx.strokeStyle=isBest?'#C9973A':isPick?'#2E86C1':'rgba(255,255,255,.5)';ctx.lineWidth=isBest?2.5:1.5;ctx.stroke();
+    if(showScores||isBest){
+      ctx.fillStyle=isBest?'#1A1008':'#FAF3E0';
+      ctx.font=`${isBest?'bold ':''} ${isBest?11:9}px Cinzel,serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(v.score,v.x,v.y);
+    }
+    ctx.restore();
+  }
+}
+function drawSettlement(v){
+  const s=10,p=v.player;
+  ctx.save();ctx.fillStyle=PLAYER_COLORS[p];ctx.strokeStyle=PLAYER_STROKE[p];ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.rect(v.x-s*.7,v.y-s*.5,s*1.4,s);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(v.x-s,v.y-s*.5);ctx.lineTo(v.x,v.y-s*1.3);ctx.lineTo(v.x+s,v.y-s*.5);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════
+canvas.addEventListener('mousemove',ev=>{
+  const{x,y}=canvasPt(ev);const tip=document.getElementById('tooltip');let found=false;
+  for(const v of vertices){
+    if(Math.hypot(x-v.x,y-v.y)<16){
+      const res=getResources(v);
+      const rs=res.map(r=>`${r.name}${r.number?' ('+r.number+')':''}`).join(', ')||'Desert only';
+      const ps=v.portBonus?`<br><b>Port:</b> ${v.portBonus.ratio} ${v.portBonus.resource}`:'';
+      const pl=v.placed?`<br><b>Player ${v.player+1}</b>`:'';
+      tip.innerHTML=`<b>${v.score} pips</b><br>${rs}${ps}${pl}`;
+      tip.style.cssText=`display:block;left:${ev.clientX+14}px;top:${ev.clientY-10}px;`;
+      found=true;break;
+    }
+  }
+  if(!found) for(const t of tiles){
+    if(ptInHex(x,y,t)){
+      const n=t.number?` • ${t.number} (${PIPS[t.number]||0} pips)`:' • No number';
+      const eh=editMode===t?' — click to edit':'';
+      tip.innerHTML=`<b>${t.terrain.resource}</b>${n}${eh}`;
+      tip.style.cssText=`display:block;left:${ev.clientX+14}px;top:${ev.clientY-10}px;`;
+      found=true;break;
+    }
+  }
+  if(!found&&(showPorts||editMode==='ports')) for(const edge of (editMode==='ports'?allEdges:allEdges.filter(e=>e.def))){
+    if(Math.hypot(x-edge.mx,y-edge.my)<22){
+      if(edge.def){
+        tip.innerHTML=`<b>Port: ${edge.def.ratio}</b><br>${edge.def.resource}${editMode==='ports'?' — click to select':''}`;
+      } else {
+        tip.innerHTML=`<b>Empty edge slot</b><br>${editMode==='ports'?'Click to select for swapping':''}`;
+      }
+      tip.style.cssText=`display:block;left:${ev.clientX+14}px;top:${ev.clientY-10}px;`;
+      found=true;break;
+    }
+  }
+  if(!found) tip.style.display='none';
+});
+canvas.addEventListener('mouseleave',()=>document.getElementById('tooltip').style.display='none');
+
+// ═══════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════
+function updateBoardStats(){
+  const el=document.getElementById('board-stats');
+  const ms=Math.max(...vertices.map(v=>v.score));
+  const avg=(vertices.reduce((s,v)=>s+v.score,0)/vertices.length).toFixed(1);
+  const hot=vertices.filter(v=>v.score>=10).length;
+  const nc={};for(const t of tiles) if(t.number) nc[t.number]=(nc[t.number]||0)+1;
+  el.innerHTML=`
+    <div class="stat-row"><span class="stat-label">Best vertex</span><span class="stat-val">${ms} pips</span></div>
+    <div class="stat-row"><span class="stat-label">Avg vertex</span><span class="stat-val">${avg} pips</span></div>
+    <div class="stat-row"><span class="stat-label">Hot spots (10+)</span><span class="stat-val">${hot}</span></div>
+    <div class="stat-row"><span class="stat-label">6/8 tiles present</span><span class="stat-val">${(nc[6]||0)+(nc[8]||0)}</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// BUTTON WIRING
+// ═══════════════════════════════════════════════════
+document.getElementById('btn-randomize').addEventListener('click',generateBoard);
+document.getElementById('btn-base').addEventListener('click',loadBaseSetup);
+document.getElementById('btn-start-placement').addEventListener('click',startPlacement);
+document.getElementById('btn-toggle-scores').addEventListener('click',()=>{showScores=!showScores;draw();});
+document.getElementById('btn-toggle-ports').addEventListener('click',()=>{showPorts=!showPorts;draw();});
+document.getElementById('btn-accept').addEventListener('click',()=>{
+  if(highlightedVertex) placeSettlement(highlightedVertex,placementOrder[placementStep].player);
+});
+document.getElementById('btn-override').addEventListener('click',()=>{
+  pickingMode=true;highlightedVertex=null;
+  document.getElementById('btn-cancel-override').style.display='';
+  document.getElementById('btn-override').style.display='none';
+  const n=document.getElementById('placement-notice');
+  n.textContent='Click any highlighted vertex to place your settlement.';n.classList.add('show');draw();
+});
+document.getElementById('btn-cancel-override').addEventListener('click',()=>{
+  pickingMode=false;
+  document.getElementById('btn-cancel-override').style.display='none';
+  document.getElementById('btn-override').style.display='';
+  document.getElementById('placement-notice').classList.remove('show');
+  highlightedVertex=bestVert();draw();
+});
+document.getElementById('btn-reset-placement').addEventListener('click',()=>{
+  for(const v of vertices){v.placed=false;v.player=null;}
+  settlements=[];pickingMode=false;placementStep=0;
+  document.getElementById('placement-notice').classList.remove('show');
+  document.getElementById('btn-cancel-override').style.display='none';
+  document.getElementById('btn-override').style.display='';
+  updatePlacementUI();draw();
+});
+document.querySelectorAll('.cnt-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.cnt-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');playerCount=parseInt(btn.dataset.n);
+}));
+document.getElementById('btn-edit-tiles').addEventListener('click',()=>{editMode==='tiles'?exitEditMode():enterEditMode('tiles');});
+document.getElementById('btn-edit-nums').addEventListener('click',()=>{editMode==='numbers'?exitEditMode():enterEditMode('numbers');});
+document.getElementById('btn-edit-ports').addEventListener('click',()=>{editMode==='ports'?exitEditMode():enterEditMode('ports');});
+
+// ═══════════════════════════════════════════════════
+// UTILS + INIT
+// ═══════════════════════════════════════════════════
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+buildTerrainPalette();buildNumPalette();buildPortPalette();
+generateBoard();
+</script>
+</body>
+</html>
